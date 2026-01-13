@@ -1,6 +1,6 @@
-const express = require('express');
-const cors = require('cors');
-const bodyParser = require('body-parser');
+import express from 'express';
+import cors from 'cors';
+import bodyParser from 'body-parser';
 
 const app = express();
 
@@ -13,4 +13,4 @@ app.get('/', (req, res) => {
     res.send('Hostal Management API is running...');
 });
 
-module.exports = app;
+export default app;
