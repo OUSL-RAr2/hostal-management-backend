@@ -77,3 +77,17 @@ export const signIn = async(req, res, next)=>{
     }
 
 }
+
+export const signOut = (req, res)=>{
+    try {
+        cookies.clearCookie('AUTH_TOKEN', res);
+        
+        return res.status(200).json({
+            success: true,
+            message: "signed out"
+        })
+
+    } catch (error) {
+        res.status(500).json({message: "Something went wrong", error: error.message})
+    }
+}
