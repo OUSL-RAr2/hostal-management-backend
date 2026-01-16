@@ -27,7 +27,5 @@ const User = sequelize.define('User', {
     }
 }, {timestamps: true, tableName: 'Users'})
 
-await sequelize.sync()
-
 export default User;
 
