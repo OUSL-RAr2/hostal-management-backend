@@ -5,6 +5,7 @@ import cookieParser from 'cookie-parser';
 
 import authRoutes from './src/routes/auth.routes.js'
 import userRoutes from './src/routes/user.routes.js';
+import dashboardRoutes from './src/routes/dashboard.routes.js';
 
 const app = express();
 
@@ -20,6 +21,9 @@ app.use('/api/auth', authRoutes);
 
 //user routes
 app.use('/api/users', userRoutes);
+
+//dashboard routes
+app.use('/api/dashboard', dashboardRoutes);
 
 
 // Test Route
