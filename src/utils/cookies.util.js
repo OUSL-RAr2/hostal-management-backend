@@ -4,7 +4,8 @@ export const cookies = {
         res.cookie(name, val, {
             maxAge: 60000 * 60,
             httpOnly: true,
-            secure: true
+            secure: true,
+            sameSite: 'strict'
         });
     },
     getCookie: (name, req)=>{
