@@ -1,11 +1,10 @@
 import User from "../models/user.model.js";
-import { cookies } from "../utils/cookies.util.js"
 import jwtAuth from "../utils/jwt.util.js";
 import { Op } from "sequelize";
 
 const checkAdmin = async(req, res, next)=>{
     try {
-        const token = cookies.getCookie('AUTH_TOKEN', req);
+        const token = req.headers.authorization?.split(" ")[1];
 
         if (!token){
             return res.status(401).json({

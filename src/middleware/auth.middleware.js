@@ -1,15 +1,14 @@
 import User from "../models/user.model.js";
 import jwtAuth from "../utils/jwt.util.js";
-import { cookies } from "../utils/cookies.util.js";
 
 
 export const authorize = async(req, res, next)=>{
 
     try {
-        const token = cookies.getCookie('AUTH_TOKEN', req)
+        const token = req.headers.authorization?.split(" ")[1];
 
         if (!token){
-            return res.status(401).send("Unauthorized")
+            return res.status(401).json({message:"No token found"})
         }
 
         const decoded = jwtAuth.verify(token);
