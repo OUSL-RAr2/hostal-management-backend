@@ -5,7 +5,7 @@ import 'dotenv/config'
 const PORT = process.env.PORT || 5000;
 
 // Sync Database and Start Server
-sequelize.sync({ force: false }) // changing 'force' to true resets the DB every time
+sequelize.sync({ alter: true }) // Use 'alter: true' to update existing tables to match models
     .then(() => {
         console.log('Database connected successfully.');
         app.listen(PORT, () => {

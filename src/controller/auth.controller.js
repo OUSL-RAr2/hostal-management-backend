@@ -5,11 +5,11 @@ import bcrypt from 'bcryptjs'
 export const signUp = async(req, res, next)=>{
     try {
 
-        const {student_id, username, registration_number, 
+        const {nic, username, registration_number, 
             center, distance_from_home, faculty, contact_number, 
             emergency_contact, email, password, role} = req.body;
 
-        const existingUser = await User.findOne({where: {Student_ID: student_id}});
+        const existingUser = await User.findOne({where: {NIC: nic}});
 
         // check for existing users
         if (existingUser){
@@ -20,7 +20,7 @@ export const signUp = async(req, res, next)=>{
         const hashedPassword = await bcrypt.hash(password, 10);
 
         const newUser = await User.create({
-            Student_ID: student_id,
+            NIC: nic,
             Username: username,
             Registration_Number: registration_number,
             Center: center,
@@ -51,10 +51,10 @@ export const signUp = async(req, res, next)=>{
 
 export const signIn = async(req, res, next)=>{
     try {
-        const {student_id, password} = req.body;
+        const {nic, password} = req.body;
 
         //fetch user from database
-        const user = await User.findOne({where: {Student_ID: student_id}});
+        const user = await User.findOne({where: {NIC: nic}});
 
         if (!user){
             return res.status(404).send("User not found");
