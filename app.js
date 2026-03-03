@@ -6,15 +6,18 @@ import cookieParser from 'cookie-parser';
 import authRoutes from './src/routes/auth.routes.js'
 import userRoutes from './src/routes/user.routes.js';
 import dashboardRoutes from './src/routes/dashboard.routes.js';
+import roomRoutes from './src/routes/room.routes.js';
+import bookingRoutes from './src/routes/booking.routes.js';
 
 const app = express();
 
 app.use(express.json());
 app.use(express.urlencoded({extended: true}));
 
+// CORS configuration - allow all localhost origins for development
 app.use(cors({
     credentials: true,
-    origin: 'http://localhost:5173'
+    origin: true  // Allow all origins in development
 }));
 app.use(bodyParser.json());
 app.use(cookieParser());
@@ -27,6 +30,12 @@ app.use('/api/users', userRoutes);
 
 //dashboard routes
 app.use('/api/dashboard', dashboardRoutes);
+
+//room routes
+app.use('/api/rooms', roomRoutes);
+
+//booking routes
+app.use('/api/bookings', bookingRoutes);
 
 
 // Test Route

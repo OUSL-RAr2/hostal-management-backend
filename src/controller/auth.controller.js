@@ -13,7 +13,17 @@ export const signUp = async(req, res, next)=>{
 
         // check for existing users
         if (existingUser){
-            return res.status(409).send("User already exist")
+            return res.status(409).json({
+                message: "User with this NIC already exists"
+            })
+        }
+
+        // check for duplicate registration number
+        const existingRegNumber = await User.findOne({where: {Registration_Number: registration_number}});
+        if (existingRegNumber){
+            return res.status(409).json({
+                message: "User with this registration number already exists"
+            })
         }
 
         // password hashing
@@ -57,14 +67,18 @@ export const signIn = async(req, res, next)=>{
         const user = await User.findOne({where: {NIC: nic}});
 
         if (!user){
-            return res.status(404).send("User not found");
+            return res.status(404).json({
+                message: "User not found"
+            });
         }
 
         //compare password
         const validatePassword = await bcrypt.compare(password, user.Password);
 
         if (!validatePassword){
-            return res.status(401).send("Incorrect password");
+            return res.status(401).json({
+                message: "Incorrect password"
+            });
         }
 
 
