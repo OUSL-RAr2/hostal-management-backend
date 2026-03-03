@@ -7,7 +7,7 @@ const User = sequelize.define('User', {
         defaultValue: DataTypes.UUIDV4,
         primaryKey: true
     },
-    Student_ID: {
+    NIC: {
         type: DataTypes.STRING,
         allowNull: false,
         unique: true
