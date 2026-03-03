@@ -7,6 +7,7 @@ import authRoutes from './src/routes/auth.routes.js'
 import userRoutes from './src/routes/user.routes.js';
 import dashboardRoutes from './src/routes/dashboard.routes.js';
 import roomRoutes from './src/routes/room.routes.js';
+import bookingRoutes from './src/routes/booking.routes.js';
 
 const app = express();
 
@@ -31,6 +32,9 @@ app.use('/api/dashboard', dashboardRoutes);
 
 //room routes
 app.use('/api/rooms', roomRoutes);
+
+//booking routes
+app.use('/api/bookings', bookingRoutes);
 
 
 // Test Route
