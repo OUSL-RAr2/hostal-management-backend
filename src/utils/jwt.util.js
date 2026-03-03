@@ -3,7 +3,7 @@ import jwt from 'jsonwebtoken'
 
 
 const KEY = process.env.JWT_SECRET;
-const EXPIRES_IN = process.env.JWT_EXPIRES_IN
+const EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d' // Default to 7 days if not set
 
 const jwtAuth = {
     sign: (payload)=>{

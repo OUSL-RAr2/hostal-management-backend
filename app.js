@@ -14,9 +14,10 @@ const app = express();
 app.use(express.json());
 app.use(express.urlencoded({extended: true}));
 
+// CORS configuration - allow all localhost origins for development
 app.use(cors({
     credentials: true,
-    origin: 'http://localhost:5173'
+    origin: true  // Allow all origins in development
 }));
 app.use(bodyParser.json());
 app.use(cookieParser());
