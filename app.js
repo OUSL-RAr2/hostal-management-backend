@@ -14,10 +14,24 @@ const app = express();
 app.use(express.json());
 app.use(express.urlencoded({extended: true}));
 
-// CORS configuration - allow all localhost origins for development
+// CORS configuration - allow all localhost/127.0.0.1 origins for development
 app.use(cors({
+    origin: function (origin, callback) {
+        // Allow requests with no origin (like mobile apps, Postman, or direct browser access)
+        if (!origin) return callback(null, true);
+        
+        // Allow localhost and 127.0.0.1 on any port
+        if (origin.includes('localhost') || origin.includes('127.0.0.1')) {
+            return callback(null, true);
+        }
+        
+        callback(new Error('Not allowed by CORS'));
+    },
     credentials: true,
-    origin: true  // Allow all origins in development
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+    exposedHeaders: ['Set-Cookie'],
+    maxAge: 86400 // 24 hours
 }));
 app.use(bodyParser.json());
 app.use(cookieParser());
