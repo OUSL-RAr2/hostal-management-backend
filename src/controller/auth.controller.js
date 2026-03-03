@@ -1,8 +1,6 @@
 import User from '../models/user.model.js'
 import jwtAuth from '../utils/jwt.util.js'
 import bcrypt from 'bcryptjs'
-import { cookies } from '../utils/cookies.util.js'
-
 
 export const signUp = async(req, res, next)=>{
     try {
@@ -72,11 +70,9 @@ export const signIn = async(req, res, next)=>{
 
         const token = jwtAuth.sign({uid: user.UID});
 
-        cookies.setCookie('AUTH_TOKEN', token, res)
-
-
         return res.status(200).json({
             message: "Signed in successfully",
+            token,
             data: user
         })
 
@@ -88,18 +84,4 @@ export const signIn = async(req, res, next)=>{
        })
     }
 
-}
-
-export const signOut = (req, res)=>{
-    try {
-        cookies.clearCookie('AUTH_TOKEN', res);
-        
-        return res.status(200).json({
-            success: true,
-            message: "signed out"
-        })
-
-    } catch (error) {
-        res.status(500).json({message: "Something went wrong", error: error.message})
-    }
 }

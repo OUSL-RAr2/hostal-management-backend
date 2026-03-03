@@ -6,12 +6,12 @@ import {
     createComplaint,
     getUserComplaints
 } from '../controller/dashboard.controller.js';
-import { verifyToken } from '../middleware/auth.middleware.js';
+import { authorize } from '../middleware/auth.middleware.js';
 
 const router = express.Router();
 
 // All dashboard routes require authentication
-router.use(verifyToken);
+router.use(authorize);
 
 // Dashboard endpoints
 router.get('/data', getDashboardData);
