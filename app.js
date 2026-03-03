@@ -6,6 +6,7 @@ import cookieParser from 'cookie-parser';
 import authRoutes from './src/routes/auth.routes.js'
 import userRoutes from './src/routes/user.routes.js';
 import dashboardRoutes from './src/routes/dashboard.routes.js';
+import roomRoutes from './src/routes/room.routes.js';
 
 const app = express();
 
@@ -27,6 +28,9 @@ app.use('/api/users', userRoutes);
 
 //dashboard routes
 app.use('/api/dashboard', dashboardRoutes);
+
+//room routes
+app.use('/api/rooms', roomRoutes);
 
 
 // Test Route
