@@ -171,6 +171,12 @@ export const createComplaint = async (req, res, next) => {
             ]
         });
 
+        // Emit real-time event to all connected clients
+        const io = req.app.get('io');
+        if (io) {
+            io.emit('complaint:created', complaintWithDetails);
+        }
+
         return res.status(201).json({
             message: "Complaint created successfully",
             data: complaintWithDetails
@@ -231,6 +237,12 @@ export const updateComplaintStatus = async (req, res, next) => {
                 }
             ]
         });
+
+        // Emit real-time event to all connected clients
+        const io = req.app.get('io');
+        if (io) {
+            io.emit('complaint:updated', updatedComplaint);
+        }
 
         return res.status(200).json({
             message: "Complaint updated successfully",
