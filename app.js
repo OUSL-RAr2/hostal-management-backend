@@ -8,6 +8,7 @@ import userRoutes from './src/routes/user.routes.js';
 import dashboardRoutes from './src/routes/dashboard.routes.js';
 import roomRoutes from './src/routes/room.routes.js';
 import bookingRoutes from './src/routes/booking.routes.js';
+import complaintRoutes from './src/routes/complaint.routes.js';
 
 const app = express();
 
@@ -50,6 +51,9 @@ app.use('/api/rooms', roomRoutes);
 
 //booking routes
 app.use('/api/bookings', bookingRoutes);
+
+//complaint routes
+app.use('/api/complaints', complaintRoutes);
 
 
 // Test Route
