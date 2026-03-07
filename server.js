@@ -21,6 +21,12 @@ const io = new Server(httpServer, {
         return callback(null, true);
       }
       
+      // Allow local network IPs for mobile development
+      if (origin.match(/^http:\/\/(192\.168\.|10\.|172\.(1[6-9]|2[0-9]|3[0-1])\.)/) || 
+          origin.includes('exp://')) {
+        return callback(null, true);
+      }
+      
       callback(new Error('Not allowed by CORS'));
     },
     methods: ['GET', 'POST'],
