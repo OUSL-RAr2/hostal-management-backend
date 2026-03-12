@@ -55,6 +55,17 @@ export const generateQRCode = async (req, res) => {
             margin: 2
         });
 
+        // Emit WebSocket event to notify web clients
+        const io = req.app.get('io');
+        if (io) {
+            io.emit('qr-generated', {
+                deviceId: deviceId,
+                location: location,
+                code: uniqueCode,
+                expiresAt: expiresAt
+            });
+        }
+
         return res.status(201).json({
             success: true,
             data: {
@@ -199,6 +210,66 @@ export const processQRScan = async (req, res) => {
             IsActive: false // Deactivate after use (requires refresh)
         });
 
+        // Get user info first
+        const user = await User.findByPk(userId, {
+            attributes: ['Username', 'Email', 'NIC']
+        });
+
+        // Generate new QR code immediately for this device
+        const newUniqueCode = uuidv4();
+        const newExpiresAt = new Date(Date.now() + 5 * 60 * 1000);
+
+        const newQrCodeRecord = await QRCode.create({
+            Code: newUniqueCode,
+            DeviceID: qrCodeRecord.DeviceID,
+            Location: qrCodeRecord.Location,
+            IsActive: true,
+            ExpiresAt: newExpiresAt,
+            CreatedBy: 'system-auto'
+        });
+
+        // Generate QR code image for the new code
+        const newQrCodeDataURL = await qrcode.toDataURL(newUniqueCode, {
+            errorCorrectionLevel: 'H',
+            type: 'image/png',
+            width: 300,
+            margin: 2
+        });
+
+        // Emit WebSocket event to push new QR code to web clients
+        const io = req.app.get('io');
+        if (io) {
+            const eventData = {
+                deviceId: qrCodeRecord.DeviceID,
+                location: qrCodeRecord.Location,
+                action: action,
+                username: user?.Username || userId,
+                newQrCode: {
+                    qrCodeId: newQrCodeRecord.QRCodeID,
+                    code: newUniqueCode,
+                    deviceId: newQrCodeRecord.DeviceID,
+                    location: newQrCodeRecord.Location,
+                    expiresAt: newQrCodeRecord.ExpiresAt,
+                    qrCodeImage: newQrCodeDataURL,
+                    usedCount: 0,
+                    generatedAt: new Date()
+                }
+            };
+            
+            console.log('🔄 Emitting qr-refresh event:', {
+                deviceId: eventData.deviceId,
+                location: eventData.location,
+                username: eventData.username,
+                action: eventData.action
+            });
+            
+            io.emit('qr-refresh', eventData);
+            
+            console.log(`✅ QR refresh event emitted for ${qrCodeRecord.Location}`);
+        } else {
+            console.warn('⚠️ Socket.IO instance not found - cannot emit event');
+        }
+
         // Create activity log
         const activityIcon = action === 'check_in' ? '✓' : '✗';
         const activityColor = action === 'check_in' ? '#E8F5E9' : '#FFEBEE';
@@ -212,11 +283,6 @@ export const processQRScan = async (req, res) => {
             Description: activityDescription,
             Icon: activityIcon,
             IconBackgroundColor: activityColor
-        });
-
-        // Get user info
-        const user = await User.findByPk(userId, {
-            attributes: ['Username', 'Email', 'NIC']
         });
 
         return res.status(200).json({
