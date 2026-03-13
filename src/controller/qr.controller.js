@@ -4,13 +4,79 @@ import User from '../models/user.model.js';
 import Activity from '../models/activity.model.js';
 import { v4 as uuidv4 } from 'uuid';
 import qrcode from 'qrcode';
-import { Op } from 'sequelize';
+import { Op, DataTypes } from 'sequelize';
+
+let manualCodeSchemaReady = false;
+
+const isUniqueConstraintError = (error) => {
+    return error?.name === 'SequelizeUniqueConstraintError' || /duplicate|unique/i.test(error?.message || '');
+};
+
+const ensureManualCodeSchema = async () => {
+    if (manualCodeSchemaReady) return;
+
+    const queryInterface = QRCode.sequelize.getQueryInterface();
+    const table = await queryInterface.describeTable('QRCodes');
+
+    if (!table.ManualCode) {
+        await queryInterface.addColumn('QRCodes', 'ManualCode', {
+            type: DataTypes.STRING(9),
+            allowNull: true,
+            unique: true,
+            comment: '9-digit manual fallback code mapped to the QR code'
+        });
+    }
+
+    manualCodeSchemaReady = true;
+};
+
+const generateRandomManualCode = () => {
+    return Math.floor(100000000 + Math.random() * 900000000).toString();
+};
+
+const generateUniqueManualCode = async () => {
+    for (let attempt = 0; attempt < 30; attempt++) {
+        const manualCode = generateRandomManualCode();
+        const existing = await QRCode.findOne({
+            where: { ManualCode: manualCode },
+            attributes: ['QRCodeID']
+        });
+
+        if (!existing) {
+            return manualCode;
+        }
+    }
+
+    throw new Error('Unable to generate unique manual code');
+};
+
+const ensureRecordHasManualCode = async (qrCodeRecord) => {
+    if (qrCodeRecord.ManualCode) {
+        return qrCodeRecord.ManualCode;
+    }
+
+    for (let attempt = 0; attempt < 10; attempt++) {
+        try {
+            const manualCode = await generateUniqueManualCode();
+            await qrCodeRecord.update({ ManualCode: manualCode });
+            return manualCode;
+        } catch (error) {
+            if (!isUniqueConstraintError(error)) {
+                throw error;
+            }
+        }
+    }
+
+    throw new Error('Unable to assign manual code to QR record');
+};
 
 /**
  * Generate a new QR code for a specific device/location
  */
 export const generateQRCode = async (req, res) => {
     try {
+        await ensureManualCodeSchema();
+
         const { deviceId, location } = req.body;
 
         if (!deviceId || !location) {
@@ -33,6 +99,7 @@ export const generateQRCode = async (req, res) => {
 
         // Generate a unique code
         const uniqueCode = uuidv4();
+        const manualCode = await generateUniqueManualCode();
         
         // Set expiration time (e.g., 5 minutes from now, or can be configurable)
         const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
@@ -40,6 +107,7 @@ export const generateQRCode = async (req, res) => {
         // Create QR code record
         const qrCodeRecord = await QRCode.create({
             Code: uniqueCode,
+            ManualCode: manualCode,
             DeviceID: deviceId,
             Location: location,
             IsActive: true,
@@ -62,6 +130,7 @@ export const generateQRCode = async (req, res) => {
                 deviceId: deviceId,
                 location: location,
                 code: uniqueCode,
+                manualCode: manualCode,
                 expiresAt: expiresAt
             });
         }
@@ -71,6 +140,7 @@ export const generateQRCode = async (req, res) => {
             data: {
                 qrCodeId: qrCodeRecord.QRCodeID,
                 code: uniqueCode,
+                manualCode: qrCodeRecord.ManualCode,
                 deviceId: qrCodeRecord.DeviceID,
                 location: qrCodeRecord.Location,
                 expiresAt: qrCodeRecord.ExpiresAt,
@@ -93,6 +163,8 @@ export const generateQRCode = async (req, res) => {
  */
 export const getActiveQRCode = async (req, res) => {
     try {
+        await ensureManualCodeSchema();
+
         const { deviceId } = req.params;
 
         // Find active QR code for this device that hasn't expired
@@ -114,6 +186,8 @@ export const getActiveQRCode = async (req, res) => {
             });
         }
 
+        await ensureRecordHasManualCode(qrCodeRecord);
+
         // Generate QR code image
         const qrCodeDataURL = await qrcode.toDataURL(qrCodeRecord.Code, {
             errorCorrectionLevel: 'H',
@@ -127,6 +201,7 @@ export const getActiveQRCode = async (req, res) => {
             data: {
                 qrCodeId: qrCodeRecord.QRCodeID,
                 code: qrCodeRecord.Code,
+                manualCode: qrCodeRecord.ManualCode,
                 deviceId: qrCodeRecord.DeviceID,
                 location: qrCodeRecord.Location,
                 expiresAt: qrCodeRecord.ExpiresAt,
@@ -150,6 +225,8 @@ export const getActiveQRCode = async (req, res) => {
  */
 export const processQRScan = async (req, res) => {
     try {
+        await ensureManualCodeSchema();
+
         const userId = req.user.UID;
         const { code } = req.body;
 
@@ -160,10 +237,13 @@ export const processQRScan = async (req, res) => {
             });
         }
 
-        // Find the QR code
+        const normalizedCode = String(code).trim();
+        const isManualCode = /^\d{9}$/.test(normalizedCode);
+
+        // Find the QR code by scanned UUID code or by 9-digit manual code
         const qrCodeRecord = await QRCode.findOne({
             where: {
-                Code: code,
+                ...(isManualCode ? { ManualCode: normalizedCode } : { Code: normalizedCode }),
                 IsActive: true
             }
         });
@@ -171,7 +251,7 @@ export const processQRScan = async (req, res) => {
         if (!qrCodeRecord) {
             return res.status(400).json({
                 success: false,
-                message: 'Invalid or expired QR code'
+                message: 'Invalid or expired QR/manual code'
             });
         }
 
@@ -217,10 +297,12 @@ export const processQRScan = async (req, res) => {
 
         // Generate new QR code immediately for this device
         const newUniqueCode = uuidv4();
+        const newManualCode = await generateUniqueManualCode();
         const newExpiresAt = new Date(Date.now() + 5 * 60 * 1000);
 
         const newQrCodeRecord = await QRCode.create({
             Code: newUniqueCode,
+            ManualCode: newManualCode,
             DeviceID: qrCodeRecord.DeviceID,
             Location: qrCodeRecord.Location,
             IsActive: true,
@@ -247,6 +329,7 @@ export const processQRScan = async (req, res) => {
                 newQrCode: {
                     qrCodeId: newQrCodeRecord.QRCodeID,
                     code: newUniqueCode,
+                    manualCode: newQrCodeRecord.ManualCode,
                     deviceId: newQrCodeRecord.DeviceID,
                     location: newQrCodeRecord.Location,
                     expiresAt: newQrCodeRecord.ExpiresAt,

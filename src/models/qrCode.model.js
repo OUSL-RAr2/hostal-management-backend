@@ -13,6 +13,12 @@ const QRCode = sequelize.define('QRCode', {
         unique: true,
         comment: 'Unique code embedded in QR'
     },
+    ManualCode: {
+        type: DataTypes.STRING(9),
+        allowNull: true,
+        unique: true,
+        comment: '9-digit manual fallback code mapped to the QR code'
+    },
     DeviceID: {
         type: DataTypes.STRING,
         allowNull: false,
@@ -54,6 +60,10 @@ const QRCode = sequelize.define('QRCode', {
         {
             unique: true,
             fields: ['Code']
+        },
+        {
+            unique: true,
+            fields: ['ManualCode']
         },
         {
             fields: ['DeviceID', 'IsActive']
