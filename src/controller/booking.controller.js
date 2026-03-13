@@ -239,3 +239,38 @@ export const checkoutStudent = async (req, res, next) => {
         });
     }
 };
+
+// Delete a booking/student assignment
+export const deleteBooking = async (req, res, next) => {
+    try {
+        const { bookingId } = req.params;
+
+        const booking = await Booking.findByPk(bookingId);
+        if (!booking) {
+            return res.status(404).json({
+                message: "Booking not found"
+            });
+        }
+
+        const room = await Room.findByPk(booking.RoomID);
+
+        if (room && booking.Status === 'checked_in') {
+            const updatedOccupancy = Math.max(0, room.CurrentOccupancy - 1);
+            await room.update({
+                CurrentOccupancy: updatedOccupancy,
+                Status: updatedOccupancy < room.Capacity ? 'available' : 'occupied'
+            });
+        }
+
+        await booking.destroy();
+
+        return res.status(200).json({
+            message: "Student deleted successfully"
+        });
+    } catch (error) {
+        res.status(500).json({
+            message: "Failed to delete student",
+            error: error.message
+        });
+    }
+};
