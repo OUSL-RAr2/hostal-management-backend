@@ -6,6 +6,16 @@ import Complaint from '../models/complaint.model.js';
 import CheckInOut from '../models/checkInOut.model.js';
 import { Op } from 'sequelize';
 
+const getCurrentAdminResponseKey = (complaint) => {
+    if (!complaint?.AdminResponse) return null;
+    return new Date(complaint.updatedAt || complaint.createdAt).toISOString();
+};
+
+const hasStudentReplyForResponseKey = (description, responseKey) => {
+    if (!description || !responseKey) return false;
+    return description.includes(`[Student Reply|responseKey=${responseKey}|`);
+};
+
 // Get Dashboard Data for User
 export const getDashboardData = async (req, res) => {
     try {
@@ -378,6 +388,110 @@ export const deleteUserComplaint = async (req, res) => {
         return res.status(500).json({
             success: false,
             message: 'Failed to delete complaint',
+            error: error.message
+        });
+    }
+};
+
+// Add a student reply to an existing complaint thread
+export const replyToComplaint = async (req, res) => {
+    try {
+        const userId = req.user.UID;
+        const { complaintId } = req.params;
+        const { message } = req.body;
+
+        const trimmedMessage = String(message || '').trim();
+        if (!trimmedMessage) {
+            return res.status(400).json({
+                success: false,
+                message: 'Reply message is required'
+            });
+        }
+
+        const complaint = await Complaint.findOne({
+            where: {
+                ComplaintID: complaintId,
+                UserID: userId
+            }
+        });
+
+        if (!complaint) {
+            return res.status(404).json({
+                success: false,
+                message: 'Complaint not found'
+            });
+        }
+
+        if (complaint.Status === 'resolved') {
+            return res.status(400).json({
+                success: false,
+                message: 'Cannot reply to a resolved complaint'
+            });
+        }
+
+        if (!complaint.AdminResponse) {
+            return res.status(400).json({
+                success: false,
+                message: 'Reply is allowed only after an admin/warden response'
+            });
+        }
+
+        const responseKey = getCurrentAdminResponseKey(complaint);
+        if (hasStudentReplyForResponseKey(complaint.Description, responseKey)) {
+            return res.status(400).json({
+                success: false,
+                message: 'You have already replied to the latest admin response'
+            });
+        }
+
+        const now = new Date();
+        const replyLine = `[Student Reply|responseKey=${responseKey}|sentAt=${now.toISOString()}]: ${trimmedMessage}`;
+        const updatedDescription = complaint.Description
+            ? `${complaint.Description}\n\n${replyLine}`
+            : replyLine;
+
+        await complaint.update({
+            Description: updatedDescription,
+            Status: 'in_progress'
+        });
+
+        await Activity.create({
+            UserID: userId,
+            ActivityType: 'complaint_filed',
+            Description: `Sent a reply for complaint: ${complaint.Title}`,
+            Icon: '💬',
+            IconBackgroundColor: '#E3F2FD'
+        });
+
+        const updatedComplaint = await Complaint.findOne({
+            where: { ComplaintID: complaint.ComplaintID },
+            include: [
+                {
+                    model: User,
+                    attributes: ['UID', 'Username', 'Registration_Number', 'Contact_Number', 'Email']
+                },
+                {
+                    model: Room,
+                    attributes: ['RoomID', 'RoomNumber', 'FloorNumber']
+                }
+            ]
+        });
+
+        const io = req.app.get('io');
+        if (io) {
+            io.emit('complaint:updated', updatedComplaint);
+        }
+
+        return res.status(200).json({
+            success: true,
+            message: 'Reply sent successfully',
+            data: updatedComplaint
+        });
+    } catch (error) {
+        console.error('Reply Complaint Error:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Failed to send complaint reply',
             error: error.message
         });
     }
