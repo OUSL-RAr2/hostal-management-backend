@@ -46,6 +46,7 @@ export const getUserById = async(req, res, next)=>{
 export const updateUser = async(req, res, next)=>{
     try {
         const { id } = req.params;
+        const requester = req.user;
         const { 
             username, 
             registration_number, 
@@ -65,15 +66,42 @@ export const updateUser = async(req, res, next)=>{
             });
         }
 
+        const isOwner = String(requester?.UID) === String(id);
+        const isAdmin = requester?.Role === 'admin';
+
+        if (!isOwner && !isAdmin) {
+            return res.status(403).json({
+                message: "You can only update your own profile"
+            });
+        }
+
+        if (!isAdmin) {
+            const restrictedFields = [
+                'username',
+                'registration_number',
+                'center',
+                'distance_from_home',
+                'faculty',
+                'email'
+            ];
+
+            const hasRestrictedFieldUpdate = restrictedFields.some((field) => req.body?.[field] !== undefined);
+            if (hasRestrictedFieldUpdate) {
+                return res.status(403).json({
+                    message: "Students can only update contact number and emergency contact"
+                });
+            }
+        }
+
         // Update user fields
-        if (username !== undefined) user.Username = username;
-        if (registration_number !== undefined) user.Registration_Number = registration_number;
-        if (center !== undefined) user.Center = center;
-        if (distance_from_home !== undefined) user.Distance_from_home = distance_from_home;
-        if (faculty !== undefined) user.Faculty = faculty;
-        if (contact_number !== undefined) user.Contact_number = contact_number;
+        if (isAdmin && username !== undefined) user.Username = username;
+        if (isAdmin && registration_number !== undefined) user.Registration_Number = registration_number;
+        if (isAdmin && center !== undefined) user.Center = center;
+        if (isAdmin && distance_from_home !== undefined) user.Distance_from_home = distance_from_home;
+        if (isAdmin && faculty !== undefined) user.Faculty = faculty;
+        if (contact_number !== undefined) user.Contact_Number = contact_number;
         if (emergency_contact !== undefined) user.Emergency_Contact = emergency_contact;
-        if (email !== undefined) user.Email = email;
+        if (isAdmin && email !== undefined) user.Email = email;
 
         await user.save();
 

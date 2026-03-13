@@ -7,8 +7,8 @@ import checkAdmin from '../middleware/checkAdmin.middleware.js';
 
 const userRoutes = Router();
 
-userRoutes.get('/all', (authorize, checkAdmin), getUsers);
+userRoutes.get('/all', authorize, checkAdmin, getUsers);
 userRoutes.get('/:id', authorize, getUserById);
-userRoutes.put('/:id', (authorize, checkAdmin), updateUser);
+userRoutes.put('/:id', authorize, updateUser);
 
 export default userRoutes;
