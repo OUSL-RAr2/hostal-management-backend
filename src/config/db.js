@@ -1,6 +1,5 @@
 import { Sequelize } from 'sequelize';
-import dotenv from 'dotenv';
-dotenv.config();
+import 'dotenv/config';
 
 // Create connection instance
 const sequelize = new Sequelize(
