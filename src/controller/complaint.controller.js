@@ -1,6 +1,7 @@
 import Complaint from "../models/complaint.model.js";
 import User from "../models/user.model.js";
 import Room from "../models/room.model.js";
+import Activity from "../models/activity.model.js";
 import { Op } from "sequelize";
 
 // Get all complaints
@@ -222,6 +223,31 @@ export const updateComplaintStatus = async (req, res, next) => {
         }
 
         await complaint.update(updateData);
+
+        // Notify complaint owner through activity/announcement feed
+        const activityParts = [];
+        if (status) {
+            const statusMap = {
+                pending: 'New',
+                in_progress: 'In Progress',
+                resolved: 'Resolved',
+                rejected: 'Rejected'
+            };
+            activityParts.push(`status changed to ${statusMap[status] || status}`);
+        }
+        if (adminResponse) {
+            activityParts.push('response received from admin/warden');
+        }
+
+        if (activityParts.length > 0) {
+            await Activity.create({
+                UserID: complaint.UserID,
+                ActivityType: 'complaint_filed',
+                Description: `Complaint update (${complaint.Title}): ${activityParts.join(', ')}`,
+                Icon: '📢',
+                IconBackgroundColor: '#E3F2FD'
+            });
+        }
 
         // Fetch updated complaint with associations
         const updatedComplaint = await Complaint.findOne({
