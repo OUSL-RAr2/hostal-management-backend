@@ -10,7 +10,7 @@ export const getBookings = async (req, res, next) => {
             include: [
                 {
                     model: User,
-                    attributes: ['UID', 'Username', 'Registration_Number', 'Contact_Number']
+                    attributes: ['UID', 'NIC', 'Username', 'Registration_Number', 'Contact_Number']
                 },
                 {
                     model: Room,
@@ -63,7 +63,19 @@ export const searchStudents = async (req, res, next) => {
 
         const students = await User.findAll({
             where: whereCondition,
-            attributes: ['UID', 'Username', 'Registration_Number', 'NIC', 'Contact_Number', 'Email', 'Faculty', 'Center']
+            attributes: [
+                'UID',
+                'Username',
+                'Registration_Number',
+                'NIC',
+                'Contact_Number',
+                'Emergency_Contact',
+                'Distance_from_home',
+                'Email',
+                'Faculty',
+                'Center',
+                'Role'
+            ]
         });
 
         return res.status(200).json({
