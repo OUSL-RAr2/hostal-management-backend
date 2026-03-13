@@ -4,7 +4,8 @@ import {
     getRoomInfo, 
     getRecentActivities,
     createComplaint,
-    getUserComplaints
+    getUserComplaints,
+    deleteUserComplaint
 } from '../controller/dashboard.controller.js';
 import { authorize } from '../middleware/auth.middleware.js';
 
@@ -19,5 +20,6 @@ router.get('/room-info', getRoomInfo);
 router.get('/activities', getRecentActivities);
 router.post('/complaints', createComplaint);
 router.get('/complaints', getUserComplaints);
+router.delete('/complaints/:complaintId', deleteUserComplaint);
 
 export default router;

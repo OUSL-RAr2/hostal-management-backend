@@ -257,10 +257,29 @@ export const createComplaint = async (req, res) => {
             IconBackgroundColor: '#FFF3E0'
         });
 
+        const complaintWithDetails = await Complaint.findOne({
+            where: { ComplaintID: complaint.ComplaintID },
+            include: [
+                {
+                    model: User,
+                    attributes: ['UID', 'Username', 'Registration_Number', 'Contact_Number', 'Email']
+                },
+                {
+                    model: Room,
+                    attributes: ['RoomID', 'RoomNumber', 'FloorNumber']
+                }
+            ]
+        });
+
+        const io = req.app.get('io');
+        if (io) {
+            io.emit('complaint:created', complaintWithDetails);
+        }
+
         return res.status(201).json({
             success: true,
             message: 'Complaint submitted successfully',
-            data: complaint
+            data: complaintWithDetails
         });
 
     } catch (error) {
@@ -299,6 +318,66 @@ export const getUserComplaints = async (req, res) => {
         return res.status(500).json({
             success: false,
             message: 'Failed to fetch complaints',
+            error: error.message
+        });
+    }
+};
+
+// Delete user's complaint when still pending or already resolved
+export const deleteUserComplaint = async (req, res) => {
+    try {
+        const userId = req.user.UID;
+        const { complaintId } = req.params;
+
+        const complaint = await Complaint.findOne({
+            where: {
+                ComplaintID: complaintId,
+                UserID: userId
+            }
+        });
+
+        if (!complaint) {
+            return res.status(404).json({
+                success: false,
+                message: 'Complaint not found'
+            });
+        }
+
+        const canDelete = complaint.Status === 'pending' || complaint.Status === 'resolved';
+        if (!canDelete) {
+            return res.status(400).json({
+                success: false,
+                message: 'Only new or resolved complaints can be deleted'
+            });
+        }
+
+        const deletedComplaintId = complaint.ComplaintID;
+        const deletedComplaintTitle = complaint.Title;
+
+        await complaint.destroy();
+
+        await Activity.create({
+            UserID: userId,
+            ActivityType: 'complaint_filed',
+            Description: `Deleted complaint: ${deletedComplaintTitle}`,
+            Icon: '🗑️',
+            IconBackgroundColor: '#FDECEC'
+        });
+
+        const io = req.app.get('io');
+        if (io) {
+            io.emit('complaint:deleted', { ComplaintID: deletedComplaintId });
+        }
+
+        return res.status(200).json({
+            success: true,
+            message: 'Complaint deleted successfully'
+        });
+    } catch (error) {
+        console.error('Delete Complaint Error:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Failed to delete complaint',
             error: error.message
         });
     }
