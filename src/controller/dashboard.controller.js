@@ -3,6 +3,7 @@ import Room from '../models/room.model.js';
 import Activity from '../models/activity.model.js';
 import User from '../models/user.model.js';
 import Complaint from '../models/complaint.model.js';
+import CheckInOut from '../models/checkInOut.model.js';
 import { Op } from 'sequelize';
 
 // Get Dashboard Data for User
@@ -22,6 +23,25 @@ export const getDashboardData = async (req, res) => {
             }],
             order: [['CheckInDate', 'DESC']]
         });
+
+        // Get the latest check-in/out status from QR scans
+        const latestCheckInOut = await CheckInOut.findOne({
+            where: {
+                UserID: userId
+            },
+            order: [['Timestamp', 'DESC']]
+        });
+
+        // Determine physical presence status
+        let physicalStatus = 'Not Checked In';
+        let lastCheckInOutTime = null;
+        let lastLocation = null;
+
+        if (latestCheckInOut) {
+            physicalStatus = latestCheckInOut.Action === 'check_in' ? 'Checked In' : 'Checked Out';
+            lastCheckInOutTime = latestCheckInOut.Timestamp;
+            lastLocation = latestCheckInOut.Location;
+        }
 
         // Get recent activities
         const recentActivities = await Activity.findAll({
@@ -52,7 +72,10 @@ export const getDashboardData = async (req, res) => {
 
         // Format response data
         const dashboardData = {
-            status: currentBooking ? 'Checked In' : 'No Active Booking',
+            status: currentBooking ? 'Active Booking' : 'No Active Booking',
+            physicalStatus: physicalStatus,
+            lastCheckInOut: lastCheckInOutTime,
+            lastLocation: lastLocation,
             booking: currentBooking ? {
                 roomNumber: currentBooking.Room.RoomNumber,
                 checkInDate: currentBooking.CheckInDate,
