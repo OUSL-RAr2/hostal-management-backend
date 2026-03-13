@@ -3,6 +3,7 @@ import jwtAuth from "../utils/jwt.util.js";
 import { Op } from "sequelize";
 
 const checkAdmin = async(req, res, next)=>{
+
     try {
         const token = req.headers.authorization?.split(" ")[1];
 

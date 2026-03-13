@@ -10,6 +10,7 @@ import roomRoutes from './src/routes/room.routes.js';
 import bookingRoutes from './src/routes/booking.routes.js';
 import complaintRoutes from './src/routes/complaint.routes.js';
 import qrRoutes from './src/routes/qr.routes.js';
+import reportRoutes from './src/routes/report.routes.js';
 
 const app = express();
 
@@ -64,6 +65,8 @@ app.use('/api/complaints', complaintRoutes);
 
 //QR code routes
 app.use('/api/qr', qrRoutes);
+//report routes
+app.use('/api/reports', reportRoutes);
 
 
 // Test Route
