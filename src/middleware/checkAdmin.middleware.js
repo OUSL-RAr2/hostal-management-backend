@@ -22,7 +22,7 @@ const checkAdmin = async(req, res, next)=>{
         // const isAdmin = await User.findOne({where: {[Op.and]:[ {UID: user.UID}, {Role: 'admin'}]}});
 
         if (!isAdmin){
-            res.status(401).send("Not an admin");
+            return res.status(401).send("Not an admin");
         }
 
         next();
