@@ -88,16 +88,7 @@ const ensureManualCodeSchemaBeforeSync = async () => {
 // Sync Database and Start Server
 sequelize.authenticate()
     .then(() => ensureManualCodeSchemaBeforeSync())
-    .then(async () => {
-        // Drop Admin table if it exists to recreate with correct schema
-        try {
-            await sequelize.query("DROP TABLE IF EXISTS `Admins`");
-            console.log('Dropped existing Admins table for schema recreation');
-        } catch(err) {
-            console.log('Admins table not found or already dropped');
-        }
-        return sequelize.sync();
-    })
+    .then(() => sequelize.sync())
     .then(() => {
         console.log('Database connected successfully.');
         httpServer.listen(PORT, () => {
