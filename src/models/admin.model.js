@@ -39,6 +39,12 @@ const Admin = sequelize.define('Admin', {
     allowNull: false,
     columnName: 'Password',
   },
+  Role: {
+    type: DataTypes.ENUM('admin', 'super_admin'),
+    allowNull: false,
+    defaultValue: 'admin',
+    columnName: 'Role',
+  },
 }, {
   tableName: 'Admins',
   timestamps: true,
