@@ -190,7 +190,7 @@ export const getRoomOccupants = async (req, res, next) => {
             include: [
                 {
                     model: User,
-                    attributes: ['UID', 'Username', 'Registration_Number', 'Contact_Number', 'Email']
+                    attributes: ['UID', 'Username', 'Registration_Number', 'NIC', 'Contact_Number', 'Email']
                 }
             ]
         });
