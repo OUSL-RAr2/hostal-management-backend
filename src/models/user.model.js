@@ -57,5 +57,10 @@ const User = sequelize.define('User', {
     }
 }, {timestamps: true, tableName: 'Users'})
 
+// Define associations after import to avoid circular dependencies
+User.associate = (models) => {
+    User.hasMany(models.Booking, { foreignKey: 'UserID', as: 'Bookings' });
+};
+
 export default User;
 
