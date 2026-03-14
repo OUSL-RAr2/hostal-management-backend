@@ -3,6 +3,7 @@ import { Server } from 'socket.io';
 import { DataTypes } from 'sequelize';
 import app from './app.js';
 import sequelize from './src/config/db.js';
+import Admin from './src/models/admin.model.js';
 import 'dotenv/config'
 
 const PORT = process.env.PORT || 5000;
@@ -87,7 +88,16 @@ const ensureManualCodeSchemaBeforeSync = async () => {
 // Sync Database and Start Server
 sequelize.authenticate()
     .then(() => ensureManualCodeSchemaBeforeSync())
-    .then(() => sequelize.sync())
+    .then(async () => {
+        // Drop Admin table if it exists to recreate with correct schema
+        try {
+            await sequelize.query("DROP TABLE IF EXISTS `Admins`");
+            console.log('Dropped existing Admins table for schema recreation');
+        } catch(err) {
+            console.log('Admins table not found or already dropped');
+        }
+        return sequelize.sync();
+    })
     .then(() => {
         console.log('Database connected successfully.');
         httpServer.listen(PORT, () => {

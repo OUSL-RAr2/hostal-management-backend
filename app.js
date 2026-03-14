@@ -11,6 +11,7 @@ import bookingRoutes from './src/routes/booking.routes.js';
 import complaintRoutes from './src/routes/complaint.routes.js';
 import qrRoutes from './src/routes/qr.routes.js';
 import reportRoutes from './src/routes/report.routes.js';
+import adminAuthRoutes from './src/routes/admin-auth.routes.js';
 
 const app = express();
 
@@ -67,6 +68,9 @@ app.use('/api/complaints', complaintRoutes);
 app.use('/api/qr', qrRoutes);
 //report routes
 app.use('/api/reports', reportRoutes);
+
+//Admin Auth routes
+app.use('/api/admin-auth', adminAuthRoutes);
 
 
 // Test Route
