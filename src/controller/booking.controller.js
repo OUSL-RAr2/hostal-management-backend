@@ -2,6 +2,7 @@ import Booking from "../models/booking.model.js";
 import Room from "../models/room.model.js";
 import User from "../models/user.model.js";
 import { Op } from "sequelize";
+import { checkoutBookingById } from "../services/autoCheckout.service.js";
 
 // Get all bookings
 export const getBookings = async (req, res, next) => {
@@ -212,33 +213,19 @@ export const checkoutStudent = async (req, res, next) => {
     try {
         const { bookingId } = req.params;
 
-        const booking = await Booking.findByPk(bookingId, {
-            include: [Room]
-        });
+        const result = await checkoutBookingById(bookingId);
 
-        if (!booking) {
+        if (result.reason === 'not_found') {
             return res.status(404).json({
                 message: "Booking not found"
             });
         }
 
-        if (booking.Status === 'checked_out') {
+        if (result.reason === 'already_checked_out') {
             return res.status(400).json({
                 message: "Student already checked out"
             });
         }
-
-        // Update booking status
-        await booking.update({
-            Status: 'checked_out'
-        });
-
-        // Update room occupancy
-        const room = await Room.findByPk(booking.RoomID);
-        await room.update({
-            CurrentOccupancy: Math.max(0, room.CurrentOccupancy - 1),
-            Status: room.CurrentOccupancy - 1 === 0 ? 'available' : (room.CurrentOccupancy - 1 < room.Capacity ? 'available' : 'occupied')
-        });
 
         return res.status(200).json({
             message: "Student checked out successfully"
