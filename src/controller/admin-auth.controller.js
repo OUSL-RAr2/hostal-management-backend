@@ -43,7 +43,13 @@ export const adminSignUp = async (req, res) => {
     return res.status(201).json({
       success: true,
       message: 'Admin account created successfully',
-      data: { AdminID: admin.AdminID, Name: admin.Name, Email: admin.Email },
+      data: { 
+        AdminID: admin.AdminID, 
+        Name: admin.Name, 
+        Email: admin.Email,
+        ContactNumber: admin.ContactNumber,
+        NIC: admin.NIC,
+      },
     });
   } catch (error) {
     console.error('Error in adminSignUp:', error);
@@ -82,7 +88,13 @@ export const adminSignIn = async (req, res) => {
       message: 'Login successful',
       data: {
         token,
-        admin: { AdminID: admin.AdminID, Name: admin.Name, Email: admin.Email },
+        admin: { 
+          AdminID: admin.AdminID, 
+          Name: admin.Name, 
+          Email: admin.Email,
+          ContactNumber: admin.ContactNumber,
+          NIC: admin.NIC,
+        },
       },
     });
   } catch (error) {
