@@ -446,7 +446,7 @@ export const getAllStudentsStatus = async (req, res) => {
     try {
         // Get all users
         const users = await User.findAll({
-            where: { Role: 'student' },
+            where: { Role: 'user' },
             attributes: ['UID', 'Username', 'Email', 'NIC', 'Registration_Number']
         });
 

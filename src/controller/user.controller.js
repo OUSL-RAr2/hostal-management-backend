@@ -1,6 +1,8 @@
 import User from "../models/user.model.js";
 import Booking from "../models/booking.model.js";
 import Room from "../models/room.model.js";
+import CheckInOut from "../models/checkInOut.model.js";
+import sequelize from "../config/db.js";
 import { Op } from "sequelize";
 
 
@@ -207,15 +209,46 @@ export const getUsersForPanel = async (req, res, next) => {
             userBookingMap[booking.UserID] = booking;
         });
 
+        // Get the last check-in/out log for these users to determine their real-time presence
+        // We find the latest log for each user in this page
+        const lastLogs = await CheckInOut.findAll({
+            where: {
+                UserID: { [Op.in]: userIds }
+            },
+            order: [['Timestamp', 'DESC']]
+        });
+
+        const userPresenceMap = {};
+        lastLogs.forEach(log => {
+            // Since they are ordered by DESC globally, we store the first (newest) one we see for each user
+            if (!userPresenceMap[log.UserID]) {
+                userPresenceMap[log.UserID] = log;
+            }
+        });
+
         // Format response data
         const formattedUsers = users.map(user => {
             const booking = userBookingMap[user.UID];
+            const lastLog = userPresenceMap[user.UID];
+            
+            // If the student has checked out via QR, we show 'checked_out' regardless of active booking
+            // 'no_booking' still applies if they never had one.
+            let displayStatus = booking?.Status || 'no_booking';
+            
+            if (lastLog) {
+                if (lastLog.Action === 'check_out') {
+                    displayStatus = 'checked_out';
+                } else if (lastLog.Action === 'check_in') {
+                    displayStatus = 'checked_in';
+                }
+            }
+
             return {
                 id: user.NIC,
                 name: user.Username,
                 registrationNumber: user.Registration_Number,
                 room: booking?.Room?.RoomNumber || 'Unassigned',
-                status: booking?.Status || 'no_booking',
+                status: displayStatus,
                 checkIn: booking?.CheckInDate ? new Date(booking.CheckInDate).toLocaleString() : '-',
                 checkOut: booking?.CheckOutDate ? new Date(booking.CheckOutDate).toLocaleString() : '-',
                 uid: user.UID,
