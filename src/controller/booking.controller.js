@@ -36,7 +36,7 @@ export const getBookings = async (req, res, next) => {
 // Search students (for assignment)
 export const searchStudents = async (req, res, next) => {
     try {
-        const { query } = req.query;
+        const query = req.query.query?.trim();
 
         if (!query) {
             return res.status(400).json({
@@ -44,23 +44,14 @@ export const searchStudents = async (req, res, next) => {
             });
         }
 
-        // Check if query is a number (for registration number search)
-        const isNumeric = !isNaN(query);
-        
-        let whereCondition = {
+        const whereCondition = {
             Role: 'user'
         };
 
-        if (isNumeric) {
-            // Search by registration number if query is numeric
-            whereCondition[Op.or] = [
-                { Username: { [Op.like]: `%${query}%` } },
-                { Registration_Number: parseInt(query) }
-            ];
-        } else {
-            // Search by username only if query is text
-            whereCondition.Username = { [Op.like]: `%${query}%` };
-        }
+        whereCondition[Op.or] = [
+            { Username: { [Op.like]: `%${query}%` } },
+            { Registration_Number: { [Op.like]: `%${query}%` } }
+        ];
 
         const students = await User.findAll({
             where: whereCondition,
