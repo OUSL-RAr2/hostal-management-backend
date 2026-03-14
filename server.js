@@ -4,9 +4,11 @@ import { DataTypes } from 'sequelize';
 import app from './app.js';
 import sequelize from './src/config/db.js';
 import Admin from './src/models/admin.model.js';
+import { autoCheckoutExpiredBookings } from './src/services/autoCheckout.service.js';
 import 'dotenv/config'
 
 const PORT = process.env.PORT || 5000;
+const AUTO_CHECKOUT_INTERVAL_MS = 60 * 60 * 1000;
 
 // Create HTTP server
 const httpServer = createServer(app);
@@ -85,12 +87,25 @@ const ensureManualCodeSchemaBeforeSync = async () => {
   }
 };
 
+const runAutoCheckoutJob = async () => {
+  try {
+    const result = await autoCheckoutExpiredBookings();
+    if (result.checkedOutCount > 0) {
+      console.log(`[AutoCheckout] Checked out ${result.checkedOutCount} expired booking(s) out of ${result.scannedCount} found.`);
+    }
+  } catch (error) {
+    console.error('[AutoCheckout] Failed to process expired bookings:', error.message);
+  }
+};
+
 // Sync Database and Start Server
 sequelize.authenticate()
     .then(() => ensureManualCodeSchemaBeforeSync())
     .then(() => sequelize.sync())
     .then(() => {
         console.log('Database connected successfully.');
+      runAutoCheckoutJob();
+      setInterval(runAutoCheckoutJob, AUTO_CHECKOUT_INTERVAL_MS);
         httpServer.listen(PORT, () => {
             console.log(`Server running on port ${PORT}`);
             console.log(`WebSocket server ready for real-time sync`);
