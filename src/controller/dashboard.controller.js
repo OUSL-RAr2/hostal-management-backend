@@ -525,3 +525,98 @@ const formatActivityTime = (timestamp) => {
         year: activityDate.getFullYear() !== now.getFullYear() ? 'numeric' : undefined
     });
 };
+
+// Get Admin Dashboard Statistics
+export const getAdminDashboard = async (req, res) => {
+    try {
+        // Get total students count
+        const totalStudents = await User.count();
+
+        // Get total rooms count
+        const totalRooms = await Room.count();
+
+        // Get occupied rooms count (rooms with current occupancy > 0)
+        const occupiedRooms = await Room.count({
+            where: {
+                CurrentOccupancy: {
+                    [Op.gt]: 0
+                }
+            }
+        });
+
+        // Get pending complaints count
+        const pendingComplaints = await Complaint.count({
+            where: {
+                Status: {
+                    [Op.in]: ['pending', 'open']
+                }
+            }
+        });
+
+        // Get recent check-ins (last 5)
+        const recentCheckIns = await Booking.findAll({
+            where: {
+                Status: 'checked_in'
+            },
+            include: [{
+                model: User,
+                attributes: ['UID', 'Registration_Number', 'Username', 'Contact_Number']
+            }, {
+                model: Room,
+                attributes: ['RoomID', 'RoomNumber']
+            }],
+            order: [['CheckInDate', 'DESC']],
+            limit: 5
+        });
+
+        // Format response
+        const dashboardStats = {
+            stats: {
+                totalStudents,
+                totalRooms,
+                occupiedRooms,
+                pendingComplaints
+            },
+            recentCheckIns: recentCheckIns.map(booking => ({
+                studentId: booking.User.Registration_Number,
+                name: booking.User.Username,
+                room: booking.Room.RoomNumber,
+                checkInTime: booking.CheckInDate,
+                duration: calculateStayDuration(booking.CheckInDate, booking.CheckOutDate)
+            }))
+        };
+
+        return res.status(200).json({
+            success: true,
+            data: dashboardStats
+        });
+    } catch (error) {
+        console.error('Admin Dashboard Error:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Failed to fetch admin dashboard data',
+            error: error.message
+        });
+    }
+};
+
+// Helper function to calculate stay duration
+const calculateStayDuration = (checkInDate, checkOutDate) => {
+    if (!checkInDate) return '0 Days';
+    
+    const checkIn = new Date(checkInDate);
+    const checkOut = checkOutDate ? new Date(checkOutDate) : new Date();
+    const diffTime = checkOut - checkIn;
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays === 0) {
+        const diffHours = Math.floor(diffTime / (1000 * 60 * 60));
+        if (diffHours === 0) {
+            const diffMins = Math.floor(diffTime / (1000 * 60));
+            return `${diffMins} mins`;
+        }
+        return `${diffHours} hours`;
+    }
+    
+    return `${diffDays} Days`;
+};
