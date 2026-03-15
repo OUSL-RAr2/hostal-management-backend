@@ -525,12 +525,28 @@ export const getCheckInOutStatistics = async (req, res) => {
 
         // Group by location
         const locationStats = logs.reduce((acc, log) => {
-            if (!acc[log.Location]) {
-                acc[log.Location] = { check_in: 0, check_out: 0 };
+            const location = log.Location || 'Unknown';
+            if (!acc[location]) {
+                acc[location] = { check_in: 0, check_out: 0 };
             }
-            acc[log.Location][log.Action]++;
+            acc[location][log.Action]++;
             return acc;
         }, {});
+
+        const dailyStatsMap = logs.reduce((acc, log) => {
+            const dateKey = new Date(log.Timestamp).toISOString().split('T')[0];
+            if (!acc[dateKey]) {
+                acc[dateKey] = { checkIns: 0, checkOuts: 0 };
+            }
+            if (log.Action === 'check_in') acc[dateKey].checkIns++;
+            if (log.Action === 'check_out') acc[dateKey].checkOuts++;
+            return acc;
+        }, {});
+
+        const dailyStats = Object.keys(dailyStatsMap).sort().map(date => ({
+            date,
+            ...dailyStatsMap[date]
+        }));
 
         return res.status(200).json({
             success: true,
@@ -538,7 +554,8 @@ export const getCheckInOutStatistics = async (req, res) => {
                 total: logs.length,
                 checkIns: checkInCount,
                 checkOuts: checkOutCount,
-                byLocation: locationStats
+                byLocation: locationStats,
+                byDate: dailyStats
             }
         });
 
