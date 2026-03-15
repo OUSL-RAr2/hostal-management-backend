@@ -4,7 +4,8 @@ import {
     searchStudents,
     assignStudentToRoom,
     getRoomOccupants,
-    checkoutStudent
+    checkoutStudent,
+    deleteBooking
 } from '../controller/booking.controller.js';
 
 const router = express.Router();
@@ -23,5 +24,8 @@ router.post('/assign', assignStudentToRoom);
 
 // Checkout student
 router.put('/checkout/:bookingId', checkoutStudent);
+
+// Delete student booking
+router.delete('/:bookingId', deleteBooking);
 
 export default router;

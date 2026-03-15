@@ -1,6 +1,8 @@
 import User from '../models/user.model.js'
+import Booking from '../models/booking.model.js'
 import jwtAuth from '../utils/jwt.util.js'
 import bcrypt from 'bcryptjs'
+import { Op } from 'sequelize'
 
 export const signUp = async(req, res, next)=>{
     try {
@@ -13,12 +15,60 @@ export const signUp = async(req, res, next)=>{
 
         // check for existing users
         if (existingUser){
-            return res.status(409).json({
-                message: "User with this NIC already exists"
-            })
+            // Check if user has any active bookings
+            const activeBooking = await Booking.findOne({
+                where: {
+                    UserID: existingUser.UID,
+                    Status: {
+                        [Op.in]: ['pending', 'checked_in']
+                    }
+                }
+            });
+
+            if (activeBooking) {
+                return res.status(409).json({
+                    message: "User with this NIC already exists and has an active booking"
+                });
+            }
+
+            // Check for duplicate registration number from other users
+            const existingRegNumber = await User.findOne({
+                where: {
+                    Registration_Number: registration_number,
+                    UID: { [Op.ne]: existingUser.UID } // Exclude current user
+                }
+            });
+            if (existingRegNumber){
+                return res.status(409).json({
+                    message: "User with this registration number already exists"
+                });
+            }
+
+            // User exists but no active bookings - update their info
+            const hashedPassword = await bcrypt.hash(password, 10);
+
+            await existingUser.update({
+                Username: username,
+                Registration_Number: registration_number,
+                Center: center,
+                Distance_from_home: distance_from_home,
+                Faculty: faculty,
+                Contact_Number: contact_number,
+                Emergency_Contact: emergency_contact,
+                Email: email,
+                Password: hashedPassword,
+                Role: role
+            });
+
+            return res.status(200).json({
+                message: "Account updated and reactivated successfully",
+                data: {
+                    "Name": existingUser.Username
+                }
+            });
         }
 
-        // check for duplicate registration number
+        // check for duplicate registration number (for new users only)
         const existingRegNumber = await User.findOne({where: {Registration_Number: registration_number}});
         if (existingRegNumber){
             return res.status(409).json({

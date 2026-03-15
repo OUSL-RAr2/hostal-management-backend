@@ -6,13 +6,17 @@ import {
     createComplaint,
     getUserComplaints,
     deleteUserComplaint,
-    replyToComplaint
+    replyToComplaint,
+    getAdminDashboard
 } from '../controller/dashboard.controller.js';
 import { authorize } from '../middleware/auth.middleware.js';
 
 const router = express.Router();
 
-// All dashboard routes require authentication
+// Admin dashboard endpoint (no auth required for now)
+router.get('/admin/stats', getAdminDashboard);
+
+// All other dashboard routes require authentication
 router.use(authorize);
 
 // Dashboard endpoints

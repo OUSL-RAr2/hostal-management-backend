@@ -2,6 +2,7 @@ import Booking from "../models/booking.model.js";
 import Room from "../models/room.model.js";
 import User from "../models/user.model.js";
 import { Op } from "sequelize";
+import { checkoutBookingById } from "../services/autoCheckout.service.js";
 
 // Get all bookings
 export const getBookings = async (req, res, next) => {
@@ -10,7 +11,7 @@ export const getBookings = async (req, res, next) => {
             include: [
                 {
                     model: User,
-                    attributes: ['UID', 'Username', 'Registration_Number', 'Contact_Number']
+                    attributes: ['UID', 'NIC', 'Username', 'Registration_Number', 'Contact_Number']
                 },
                 {
                     model: Room,
@@ -35,7 +36,7 @@ export const getBookings = async (req, res, next) => {
 // Search students (for assignment)
 export const searchStudents = async (req, res, next) => {
     try {
-        const { query } = req.query;
+        const query = req.query.query?.trim();
 
         if (!query) {
             return res.status(400).json({
@@ -43,27 +44,30 @@ export const searchStudents = async (req, res, next) => {
             });
         }
 
-        // Check if query is a number (for registration number search)
-        const isNumeric = !isNaN(query);
-        
-        let whereCondition = {
+        const whereCondition = {
             Role: 'user'
         };
 
-        if (isNumeric) {
-            // Search by registration number if query is numeric
-            whereCondition[Op.or] = [
-                { Username: { [Op.like]: `%${query}%` } },
-                { Registration_Number: parseInt(query) }
-            ];
-        } else {
-            // Search by username only if query is text
-            whereCondition.Username = { [Op.like]: `%${query}%` };
-        }
+        whereCondition[Op.or] = [
+            { Username: { [Op.like]: `%${query}%` } },
+            { Registration_Number: { [Op.like]: `%${query}%` } }
+        ];
 
         const students = await User.findAll({
             where: whereCondition,
-            attributes: ['UID', 'Username', 'Registration_Number', 'NIC', 'Contact_Number', 'Email', 'Faculty', 'Center']
+            attributes: [
+                'UID',
+                'Username',
+                'Registration_Number',
+                'NIC',
+                'Contact_Number',
+                'Emergency_Contact',
+                'Distance_from_home',
+                'Email',
+                'Faculty',
+                'Center',
+                'Role'
+            ]
         });
 
         return res.status(200).json({
@@ -177,7 +181,7 @@ export const getRoomOccupants = async (req, res, next) => {
             include: [
                 {
                     model: User,
-                    attributes: ['UID', 'Username', 'Registration_Number', 'Contact_Number', 'Email']
+                    attributes: ['UID', 'Username', 'Registration_Number', 'NIC', 'Contact_Number', 'Email']
                 }
             ]
         });
@@ -200,33 +204,19 @@ export const checkoutStudent = async (req, res, next) => {
     try {
         const { bookingId } = req.params;
 
-        const booking = await Booking.findByPk(bookingId, {
-            include: [Room]
-        });
+        const result = await checkoutBookingById(bookingId);
 
-        if (!booking) {
+        if (result.reason === 'not_found') {
             return res.status(404).json({
                 message: "Booking not found"
             });
         }
 
-        if (booking.Status === 'checked_out') {
+        if (result.reason === 'already_checked_out') {
             return res.status(400).json({
                 message: "Student already checked out"
             });
         }
-
-        // Update booking status
-        await booking.update({
-            Status: 'checked_out'
-        });
-
-        // Update room occupancy
-        const room = await Room.findByPk(booking.RoomID);
-        await room.update({
-            CurrentOccupancy: Math.max(0, room.CurrentOccupancy - 1),
-            Status: room.CurrentOccupancy - 1 === 0 ? 'available' : (room.CurrentOccupancy - 1 < room.Capacity ? 'available' : 'occupied')
-        });
 
         return res.status(200).json({
             message: "Student checked out successfully"
@@ -235,6 +225,41 @@ export const checkoutStudent = async (req, res, next) => {
     } catch (error) {
         res.status(500).json({
             message: "Failed to checkout student",
+            error: error.message
+        });
+    }
+};
+
+// Delete a booking/student assignment
+export const deleteBooking = async (req, res, next) => {
+    try {
+        const { bookingId } = req.params;
+
+        const booking = await Booking.findByPk(bookingId);
+        if (!booking) {
+            return res.status(404).json({
+                message: "Booking not found"
+            });
+        }
+
+        const room = await Room.findByPk(booking.RoomID);
+
+        if (room && booking.Status === 'checked_in') {
+            const updatedOccupancy = Math.max(0, room.CurrentOccupancy - 1);
+            await room.update({
+                CurrentOccupancy: updatedOccupancy,
+                Status: updatedOccupancy < room.Capacity ? 'available' : 'occupied'
+            });
+        }
+
+        await booking.destroy();
+
+        return res.status(200).json({
+            message: "Student deleted successfully"
+        });
+    } catch (error) {
+        res.status(500).json({
+            message: "Failed to delete student",
             error: error.message
         });
     }
